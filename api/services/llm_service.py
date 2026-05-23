@@ -12,6 +12,8 @@ Set OPENAI_API_KEY, and optionally OPENAI_BASE_URL and OPENAI_MODEL
 in your .env file. Settings are loaded by ``api.config.Settings``.
 """
 
+import json
+
 from openai import AsyncOpenAI
 
 from api.config import get_settings
@@ -53,7 +55,7 @@ async def analyze_journal_entry(
                 "topics":    list[str],
             }
 
-    TODO (Task 4):
+    Task 4 implementation:
       1. If ``client is None``, call ``_default_client()`` to construct one.
       2. Build a messages list that includes ``entry_text`` somewhere
          (the unit tests check that the entry text reaches the LLM).
@@ -62,7 +64,44 @@ async def analyze_journal_entry(
       4. Parse the assistant's JSON response with ``json.loads()``.
       5. Return a dict with ``entry_id``, ``sentiment``, ``summary``, ``topics``.
     """
-    raise NotImplementedError(
-        "Task 4: implement analyze_journal_entry using the openai SDK. "
-        "See tests/test_llm_service.py for the test contract."
-    )
+    should_close_client = client is None
+    if client is None:
+        client = _default_client()
+
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a journal analysis assistant. Analyze the provided entry text "
+                    "and return only valid JSON with keys: sentiment, summary, topics. "
+                    "Sentiment must be one of positive, negative, or neutral. "
+                    "Topics should be a list of short strings."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Analyze the following journal entry and return JSON only:\n\n{entry_text}"
+                ),
+            },
+        ]
+
+        response = await client.chat.completions.create(
+            model=get_settings().openai_model,
+            messages=messages,
+            temperature=0.0,
+        )
+
+        content = response.choices[0].message.content
+        analysis = json.loads(content)
+
+        return {
+            "entry_id": entry_id,
+            "sentiment": analysis["sentiment"],
+            "summary": analysis["summary"],
+            "topics": analysis["topics"],
+        }
+    finally:
+        if should_close_client:
+            await client.close()
