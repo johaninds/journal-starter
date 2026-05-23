@@ -170,3 +170,5 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .devcontainer/devcontainer-lock.json
+.DS_Store
+api/.DS_Store
