@@ -15,6 +15,7 @@ in your .env file. Settings are loaded by ``api.config.Settings``.
 import json
 
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from api.config import get_settings
 
@@ -69,7 +70,7 @@ async def analyze_journal_entry(
         client = _default_client()
 
     try:
-        messages = [
+        messages: list[ChatCompletionMessageParam] = [
             {
                 "role": "system",
                 "content": (
@@ -94,6 +95,8 @@ async def analyze_journal_entry(
         )
 
         content = response.choices[0].message.content
+        if content is None:
+            raise ValueError("LLM response content is empty")
         analysis = json.loads(content)
 
         return {
